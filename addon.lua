@@ -2,6 +2,7 @@ local myname, ns = ...
 local myfullname = C_AddOns.GetAddOnMetadata(myname, "Title")
 local db
 local isClassic = WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE
+local isMoP = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC
 ns.DEBUG = C_AddOns.GetAddOnMetadata(myname, "Version") == "@".."project-version@"
 
 _G.SimpleItemLevel = {}
@@ -10,6 +11,15 @@ local SLOT_MAINHAND = GetInventorySlotInfo("MainHandSlot")
 local SLOT_OFFHAND = GetInventorySlotInfo("SecondaryHandSlot")
 
 function ns.Print(...) print("|cFF33FF99".. myfullname.. "|r:", ...) end
+
+-- Hack to support MoP and hide ring enchants if player is not an enchanter
+-- TODO: event listener for profession changes
+local playerProf1, playerProf2 = GetProfessions()
+local prof1Name, _, prof1SkillLevel = GetProfessionInfo(playerProf1)
+local prof2Name, _, prof2SkillLevel = GetProfessionInfo(playerProf2)
+local canEnchantRings = not isMoP 
+    or (prof1Name == 'Enchanting' and prof1SkillLevel >= 360) 
+    or (prof2Name == 'Enchanting' and prof2SkillLevel >= 360)
 
 -- events
 local hooks = {}
@@ -479,7 +489,9 @@ do
                 self.avglevel:SetFontObject(NumberFontNormal) -- GameFontHighlightSmall isn't bad
             end
         end
-        AddAverageLevelToFontString("player", self.avglevel)
+        --AddAverageLevelToFontString("player", self.avglevel)
+        local avgItemLEvel, avgItemLevelEquipped, _ = GetAverageItemLevel()
+        self.avglevel:SetFormattedText("Item Level: %.0f", avgItemLevelEquipped)
         self:Hide()
     end)
     levelUpdater:Hide()
@@ -1030,7 +1042,7 @@ do
         return slots > gems
     end
     local enchantable = isClassic and {
-        INVTYPE_HEAD = true,
+        INVTYPE_HEAD = not isMoP,
         INVTYPE_SHOULDER = true,
         INVTYPE_CHEST = true,
         INVTYPE_ROBE = true,
@@ -1038,7 +1050,7 @@ do
         INVTYPE_FEET = true,
         INVTYPE_WRIST = true,
         INVTYPE_HAND = true,
-        INVTYPE_FINGER = true,
+        INVTYPE_FINGER = canEnchantRings,
         INVTYPE_CLOAK = true,
         INVTYPE_WEAPON = true,
         INVTYPE_SHIELD = true,
